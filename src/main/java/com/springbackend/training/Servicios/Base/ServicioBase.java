@@ -2,7 +2,7 @@ package com.springbackend.training.Servicios.Base;
 
 import com.springbackend.training.Entidades.Base.BaseEntity;
 import com.springbackend.training.Repositorios.Base.RepositorioBase;
-import com.springbackend.training.Servicios.Base.IServicioBase;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
