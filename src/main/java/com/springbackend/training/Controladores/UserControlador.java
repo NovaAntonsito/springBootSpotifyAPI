@@ -2,7 +2,7 @@ package com.springbackend.training.Controladores;
 
 
 import com.springbackend.training.Controladores.Base.ControladorBase;
-import com.springbackend.training.Controladores.DTO.TrackDTO;
+import com.springbackend.training.Controladores.DTO.TrackResponse;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.UserServicio;
 
@@ -28,6 +28,7 @@ import se.michaelthelin.spotify.requests.data.playlists.GetListOfUsersPlaylistsR
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+
 import java.util.List;
 
 @RestController
@@ -44,8 +45,6 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
 
     @Autowired
     private Environment env;
-
-    private se.michaelthelin.spotify.model_objects.specification.User userSpotify;
 
 
     @Autowired
@@ -77,19 +76,12 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     }
 
     @GetMapping("/readMyPlaylist")
-    public List<TrackDTO> getPlaylist(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+    public List<TrackResponse> getPlaylist(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
         try {
             spotifyApi.setAccessToken(accessToken);
             //TODO: Todo esto se tiene que ir al servicio, que costumbre de mierda de hacer todo en el controlador
-            ArrayList<TrackDTO> trackList = new ArrayList<>();
+            ArrayList<TrackResponse> trackList = new ArrayList<>();
             int index = 0;
-            String trackName = "";
-            String previewUrl = "";
-
-            User userSpotify = spotifyApi
-                    .getCurrentUsersProfile()
-                    .build()
-                    .execute();
 
             String mySpotifyID = env.getProperty("spotify.anton.PlaylistID");
 
@@ -110,55 +102,23 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
                     .execute();
             for (PlaylistTrack playlistTrack : playlist.getTracks().getItems()) {
                 Track track = (Track) playlistTrack.getTrack();
-                trackName = track.getName();
-                previewUrl = track.getPreviewUrl();
-                trackList.add(new TrackDTO(index, trackName, previewUrl));
+                String trackName = track.getName();
+                String previewUrl = track.getPreviewUrl();
+                trackList.add(new TrackResponse(index, trackName, previewUrl, "d"));
                 index++;
             }
             return trackList;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (SpotifyWebApiException e) {
+        } catch (IOException | SpotifyWebApiException e) {
             log.error(e.getMessage());
             return new ArrayList<>();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
         }
     }
 
     @GetMapping("/readPlaylists")
-    public List<TrackDTO> getUserPlaylists(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+    public List<TrackResponse> getUserPlaylists(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
         try {
-            //TODO: Todo esto se tiene que ir al servicio, que costumbre de mierda de hacer todo en el controlador
             spotifyApi.setAccessToken(accessToken);
-            User userSpotify = spotifyApi
-                    .getCurrentUsersProfile()
-                    .build()
-                    .execute();
-            int index = 0;
-            String trackName = "";
-            String previewUrl = "";
-            ArrayList<TrackDTO> trackList = new ArrayList<>();
-
-            String userID = userSpotify.getId();
-
-            GetListOfUsersPlaylistsRequest usersPlaylistRequest = spotifyApi
-                    .getListOfUsersPlaylists(userID)
-                    .build();
-            Paging<PlaylistSimplified> userPlaylists = usersPlaylistRequest.execute();
-            userServicio.savePlaylists(userPlaylists, spotifyApi);
-            Playlist playlist = spotifyApi
-                    .getPlaylist(userID)
-                    .build()
-                    .execute();
-            for (PlaylistTrack playlistTrack : playlist.getTracks().getItems()) {
-                Track track = (Track) playlistTrack.getTrack();
-                trackName = track.getName();
-                previewUrl = track.getPreviewUrl();
-                trackList.add(new TrackDTO(index, trackName, previewUrl));
-                index++;
-            }
-            return trackList;
+            return userServicio.savePlaylists(spotifyApi);
         } catch (IOException | SpotifyWebApiException e) {
             log.error(e.getMessage());
             return new ArrayList<>();
