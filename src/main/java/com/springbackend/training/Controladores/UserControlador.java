@@ -2,7 +2,7 @@ package com.springbackend.training.Controladores;
 
 
 import com.springbackend.training.Controladores.Base.ControladorBase;
-import com.springbackend.training.Controladores.DTO.TrackResponse;
+import com.springbackend.training.Controladores.Response.TrackResponse;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.UserServicio;
 
@@ -13,6 +13,10 @@ import org.apache.hc.core5.http.ParseException;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -38,14 +42,8 @@ import java.util.List;
 @Slf4j
 public class UserControlador extends ControladorBase<UserDB, UserServicio> {
 
-    @Autowired
-    private UserServicio userServicio;
-
+    private final UserServicio userServicio;
     private static SpotifyApi spotifyApi;
-
-    @Autowired
-    private Environment env;
-
 
     @Autowired
     public void setSpotifyApi(UserServicio userServicio) {
@@ -58,7 +56,7 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     public RedirectView spotifyLogin() {
         AuthorizationCodeUriRequest authCodeURIRequest = spotifyApi
                 .authorizationCodeUri()
-                .scope("user-top-read")
+                .scope("user-read-private, user-read-email")
                 .show_dialog(true)
                 .build();
         final URI uri = authCodeURIRequest.execute();
@@ -76,54 +74,23 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     }
 
     @GetMapping("/readMyPlaylist")
-    public List<TrackResponse> getPlaylist(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+    public Page<TrackResponse> savePlaylist(@RequestParam("jwt") String accessToken, @PageableDefault(size = 10) Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
         try {
             spotifyApi.setAccessToken(accessToken);
-            //TODO: Todo esto se tiene que ir al servicio, que costumbre de mierda de hacer todo en el controlador
-            ArrayList<TrackResponse> trackList = new ArrayList<>();
-            int index = 0;
-
-            String mySpotifyID = env.getProperty("spotify.anton.PlaylistID");
-
-            GetListOfUsersPlaylistsRequest userPlayLists = spotifyApi
-                    .getListOfUsersPlaylists(mySpotifyID)
-                    .build();
-
-
-            Paging<PlaylistSimplified> userPlaylistPage = userPlayLists.execute();
-
-            String playlistID = userPlaylistPage
-                    .getItems()[0]
-                    .getId();
-
-            Playlist playlist = spotifyApi
-                    .getPlaylist(playlistID)
-                    .build()
-                    .execute();
-            for (PlaylistTrack playlistTrack : playlist.getTracks().getItems()) {
-                Track track = (Track) playlistTrack.getTrack();
-                String trackName = track.getName();
-                String previewUrl = track.getPreviewUrl();
-                trackList.add(new TrackResponse(index, trackName, previewUrl, "d"));
-                index++;
-            }
-            return trackList;
-        } catch (IOException | SpotifyWebApiException e) {
-            log.error(e.getMessage());
-            return new ArrayList<>();
+            return userServicio.getMyPlaylist(spotifyApi, pageable);
+        } catch (IOException | SpotifyWebApiException | ParseException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
-    @GetMapping("/readPlaylists")
-    public List<TrackResponse> getUserPlaylists(@RequestParam("jwt") String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+    @GetMapping("/savePlaylists")
+    public Page<TrackResponse> getUserPlaylists(@RequestParam("jwt") String accessToken, @PageableDefault Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
         try {
             spotifyApi.setAccessToken(accessToken);
-            return userServicio.savePlaylists(spotifyApi);
-        } catch (IOException | SpotifyWebApiException e) {
+            return userServicio.savePlaylists(spotifyApi,pageable);
+        } catch (IOException | SpotifyWebApiException | ParseException e) {
             log.error(e.getMessage());
-            return new ArrayList<>();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 
