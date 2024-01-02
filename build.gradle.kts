@@ -1,3 +1,5 @@
+
+
 plugins {
     java
     id("org.springframework.boot") version "3.2.0"
@@ -33,11 +35,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+    //Developement extension
+    implementation("com.slack.api:slack-api-client:1.36.1")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
     runtimeOnly("com.mysql:mysql-connector-j")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("mysql:mysql-connector-java:5.1.6")
     testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
+
 }
 
 tasks.withType<Test> {
