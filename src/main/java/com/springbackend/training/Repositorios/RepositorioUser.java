@@ -7,5 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RepositorioUser extends RepositorioBase<UserDB, Long> {
+
     boolean existsByUsuarioSpotify(String name);
 }

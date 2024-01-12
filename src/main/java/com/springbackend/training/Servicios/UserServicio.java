@@ -24,10 +24,7 @@ import se.michaelthelin.spotify.requests.data.playlists.GetListOfUsersPlaylistsR
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -64,82 +61,46 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     }
 
     @Override
-    public Page<TrackResponse> savePlaylists(SpotifyApi spotifyApiArmada, Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
-        try {
-            User userSpotify = spotifyApiArmada.getCurrentUsersProfile().build().execute();
-            String usernameSpotify = userSpotify.getDisplayName();
-            if (personaRepository.existsByUsuarioSpotify(usernameSpotify)) {
-                throw new RuntimeException("Ya existe un usuario");
-            }
-            String userID = userSpotify.getId();
-            GetListOfUsersPlaylistsRequest usersPlaylistsRequest = spotifyApiArmada.getListOfUsersPlaylists(userID).build();
-            Paging<PlaylistSimplified> userPlaylists = usersPlaylistsRequest.execute();
-            int pageNumber = pageable.getPageNumber();
-            int pageSize = pageable.getPageSize();
-            UserDB newUserDB = new UserDB();
-            newUserDB.setUsuarioSpotify(usernameSpotify);
-            personaRepository.save(newUserDB);
-
-            AtomicInteger index = new AtomicInteger(0);
-            ArrayList<TrackResponse> trackResponses = Arrays.stream(userPlaylists.getItems())
-                    .flatMap(userPlaylist -> {
-                        try {
-                            return Arrays.stream(spotifyApiArmada.getPlaylist(userPlaylist.getId()).build().execute().getTracks().getItems());
-                        } catch (IOException | ParseException | SpotifyWebApiException e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
-                    .map(playlistTrack -> {
-                        Track track = getTrackFromPlaylistTrack((PlaylistTrack) playlistTrack);
-                        List<ArtistSimplified> artists = List.of(track.getArtists());
-                        if (!artists.isEmpty()) {
-                            String trackName = track.getName();
-                            String previewUrl = track.getPreviewUrl();
-                            String artistName = artists.get(0).getName();
-                            SongsDB newSongDB = new SongsDB(newUserDB, trackName, artistName, previewUrl);
-                            cancionesRepository.save(newSongDB);
-                            return new TrackResponse(index.getAndIncrement(), trackName, previewUrl, artistName);
-                        } else {
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toCollection(ArrayList::new));
-
-            List<TrackResponse> trackResponsesPaged = trackResponses.stream()
-                    .skip((pageNumber - 1) * pageSize)
-                    .limit(pageSize)
-                    .toList();
-            int totalPages = (int) Math.ceil((double) trackResponses.size() / (double) pageSize);
-
-
-            return new PageImpl<>(trackResponsesPaged, pageable, totalPages);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public List<Map<String, String>> getPlaylistIDFromUser(SpotifyApi spotifyApi) throws IOException, ParseException, SpotifyWebApiException {
+        Paging<PlaylistSimplified> playlist = spotifyApi.getListOfCurrentUsersPlaylists().build().execute();
+        return Arrays.stream(playlist.getItems()).map(
+                playlistSimplified -> {
+                    Map<String, String> playListMap = new HashMap<>();
+                    playListMap.put("nombre", playlistSimplified.getId());
+                    playListMap.put("id", playlistSimplified.getName());
+                    return playListMap;
+                }).toList();
     }
 
     @Override
-    public Page<TrackResponse> getMyPlaylist(SpotifyApi spotifyApiArmada, Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
-        ArrayList<TrackResponse> trackList = new ArrayList<>();
-        AtomicInteger atomicInteger = new AtomicInteger(0);
-        int pageNumber = pageable.getPageNumber();
-        int pageSize = pageable.getPageSize();
-        Playlist playlist = spotifyApiArmada
-                .getPlaylist(env.getProperty("spotify.anton.MainPlaylist"))
-                .build()
-                .execute();
-        for (PlaylistTrack playlistTrack : playlist.getTracks().getItems()) {
-            Track track = (Track) playlistTrack.getTrack();
-            List<ArtistSimplified> artists = List.of(track.getArtists());
-            if (!artists.isEmpty()) {
-                String trackName = track.getName();
-                String previewUrl = track.getPreviewUrl();
-                String artistName = artists.get(0).getName();
-                trackList.add(new TrackResponse(atomicInteger.getAndIncrement(), trackName, previewUrl, artistName));
-            }
-        }
-        return new PageImpl<>(trackList, pageable, trackList.size());
+    public void savePlaylistToUser(List<PlaylistTrack> playlistFromUser, SpotifyApi spotifyApi) throws IOException, ParseException, SpotifyWebApiException {
+        User userSpotify = spotifyApi.getCurrentUsersProfile().build().execute();
+        UserDB newUserDB = new UserDB();
+
+        newUserDB.setUsuarioSpotify(userSpotify.getDisplayName());
+        personaRepository.save(newUserDB); // Save the UserDB entity first
+
+        List<SongsDB> userSongs = playlistFromUser.stream().map(playlistTrack -> {
+            Track track = getTrackFromPlaylistTrack(playlistTrack);
+            assert track != null;
+            ArtistSimplified artistOnTrack = track.getArtists()[0];
+            SongsDB newSongDB = new SongsDB(newUserDB, track.getName(), artistOnTrack.getName(), track.getPreviewUrl());
+            cancionesRepository.save(newSongDB);
+            return newSongDB;
+        }).toList();
+        newUserDB.setCancionesPlaylist(userSongs);
+        personaRepository.save(newUserDB);
+    }
+
+    @Override
+    public List<PlaylistTrack> getSpotifyPlaylist(SpotifyApi spotifyApi, String playlistID) throws IOException, ParseException, SpotifyWebApiException {
+        Playlist playlist = spotifyApi.getPlaylist(playlistID).build().execute();
+        return Arrays.stream(playlist.getTracks().getItems()).collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<SongsDB> getUserPlayListFromDB(Long id, Pageable pageable) {
+        return cancionesRepository.getSongsDBByUsuarioPropietario_ID(id, pageable);
     }
 
     private Track getTrackFromPlaylistTrack(PlaylistTrack playlistTrack) {

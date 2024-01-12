@@ -4,6 +4,7 @@ package com.springbackend.training.Controladores;
 import com.springbackend.training.Config.SlackErrorConfig;
 import com.springbackend.training.Controladores.Base.ControladorBase;
 import com.springbackend.training.Controladores.Response.TrackResponse;
+import com.springbackend.training.Entidades.SongsDB;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.UserServicio;
 
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -27,6 +29,8 @@ import se.michaelthelin.spotify.requests.authorization.authorization_code.Author
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
 import java.io.IOException;
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin(origins = "*")
@@ -64,30 +68,44 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
                 .build();
         AuthorizationCodeCredentials credentials = authorizationCodeRequest.execute();
         String accessToken = credentials.getAccessToken();
+        spotifyApi.setAccessToken(accessToken);
         return "{" + accessToken + "}";
     }
 
-    @GetMapping("/readMyPlaylist")
-    public Page<TrackResponse> savePlaylist(@RequestParam("jwt") String accessToken, @PageableDefault(size = 10) Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
+
+
+    @GetMapping("/playlists")
+    public List<Map<String, String>> getPlaylistID (){
         try {
-            spotifyApi.setAccessToken(accessToken);
-            return userServicio.getMyPlaylist(spotifyApi, pageable);
-        } catch (IOException | SpotifyWebApiException | ParseException e) {
+            return userServicio.getPlaylistIDFromUser(spotifyApi);
+        }catch (Exception e){
             slackErrorConfig.sendErrorMessage(e);
             throw new RuntimeException(e.getMessage());
         }
     }
 
-    @GetMapping("/savePlaylists")
-    public Page<TrackResponse> getUserPlaylists(@RequestParam("jwt") String accessToken, @PageableDefault Pageable pageable) throws IOException, ParseException, SpotifyWebApiException {
+    @GetMapping("/getSongFromSpotify")
+    @ResponseStatus(HttpStatus.OK)
+    public void getSongsfromSpotify (@RequestParam("id") String playlistID){
         try {
-            spotifyApi.setAccessToken(accessToken);
-            return userServicio.savePlaylists(spotifyApi,pageable);
-        } catch (IOException | SpotifyWebApiException | ParseException e) {
-            log.error(e.getMessage());
+            userServicio.savePlaylistToUser(userServicio.getSpotifyPlaylist(spotifyApi, playlistID), spotifyApi);
+        }catch (Exception e){
+
             throw new RuntimeException(e.getMessage());
         }
     }
+
+    @GetMapping("/songs")
+    public Page<SongsDB> getPlaylistDB (@RequestParam("id") Long id, @PageableDefault Pageable pageable){
+        try {
+            return userServicio.getUserPlayListFromDB(id, pageable);
+        }catch (Exception e){
+            slackErrorConfig.sendErrorMessage(e);
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+
 
 
 }
