@@ -1,5 +1,6 @@
 package com.springbackend.training.Entidades;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.springbackend.training.Entidades.Base.BaseEntity;
 import jakarta.persistence.Entity;
 
@@ -19,5 +20,6 @@ public class UserDB extends BaseEntity {
     private String usuarioSpotify;
 
     @OneToMany(mappedBy = "usuarioPropietario")
+    @JsonBackReference
     private List<SongsDB> cancionesPlaylist;
 }

@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RepositorioSongs extends RepositorioBase<SongsDB, Long> {
-    @Query(nativeQuery = true, value =  "SELECT * FROM canciones JOIN springdb.persona p on p.id = canciones.usuario_id WHERE usuario_id = :id")
+    @Query(nativeQuery = true, value =  "SELECT * FROM canciones WHERE usuario_id = :id")
     Page<SongsDB> getSongsDBByUsuarioPropietario_ID(@Param("id")Long id, Pageable pageable);
 }

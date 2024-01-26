@@ -11,21 +11,19 @@ import com.springbackend.training.Servicios.Interfaces.IUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.ParseException;
 import org.springframework.core.env.Environment;
-
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.SpotifyHttpManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.specification.*;
-import se.michaelthelin.spotify.requests.data.playlists.GetListOfUsersPlaylistsRequest;
+
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+
 import java.util.stream.Collectors;
 
 
@@ -76,18 +74,21 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     public void savePlaylistToUser(List<PlaylistTrack> playlistFromUser, SpotifyApi spotifyApi) throws IOException, ParseException, SpotifyWebApiException {
         User userSpotify = spotifyApi.getCurrentUsersProfile().build().execute();
         UserDB newUserDB = new UserDB();
-
         newUserDB.setUsuarioSpotify(userSpotify.getDisplayName());
-        personaRepository.save(newUserDB); // Save the UserDB entity first
-
-        List<SongsDB> userSongs = playlistFromUser.stream().map(playlistTrack -> {
-            Track track = getTrackFromPlaylistTrack(playlistTrack);
-            assert track != null;
-            ArtistSimplified artistOnTrack = track.getArtists()[0];
-            SongsDB newSongDB = new SongsDB(newUserDB, track.getName(), artistOnTrack.getName(), track.getPreviewUrl());
-            cancionesRepository.save(newSongDB);
-            return newSongDB;
-        }).toList();
+        personaRepository.save(newUserDB);
+        List<SongsDB> userSongs = new ArrayList<>();
+        for (PlaylistTrack playlistTrack : playlistFromUser) {
+            try {
+                Track track = getTrackFromPlaylistTrack(playlistTrack);
+                assert track != null;
+                ArtistSimplified artistOnTrack = track.getArtists()[0];
+                SongsDB newSongDB = new SongsDB(newUserDB, track.getName(), artistOnTrack.getName(), track.getPreviewUrl());
+                cancionesRepository.save(newSongDB);
+                userSongs.add(newSongDB);
+            } catch (Exception e) {
+                log.error(e.toString());
+            }
+        }
         newUserDB.setCancionesPlaylist(userSongs);
         personaRepository.save(newUserDB);
     }

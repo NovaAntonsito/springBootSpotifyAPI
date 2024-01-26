@@ -3,7 +3,6 @@ package com.springbackend.training.Controladores;
 
 import com.springbackend.training.Config.SlackErrorConfig;
 import com.springbackend.training.Controladores.Base.ControladorBase;
-import com.springbackend.training.Controladores.Response.TrackResponse;
 import com.springbackend.training.Entidades.SongsDB;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.UserServicio;
@@ -20,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -29,6 +29,7 @@ import se.michaelthelin.spotify.requests.authorization.authorization_code.Author
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -63,13 +64,13 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     }
 
     @GetMapping("/success")
-    public String getAccessToken(@RequestParam("code") String code) throws IOException, ParseException, SpotifyWebApiException {
+    public ResponseEntity<?> getAccessToken(@RequestParam("code") String code) throws IOException, ParseException, SpotifyWebApiException {
         AuthorizationCodeRequest authorizationCodeRequest = spotifyApi.authorizationCode(code)
                 .build();
         AuthorizationCodeCredentials credentials = authorizationCodeRequest.execute();
         String accessToken = credentials.getAccessToken();
         spotifyApi.setAccessToken(accessToken);
-        return "{" + accessToken + "}";
+        return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , "El token fue aceptado"));
     }
 
 
@@ -79,19 +80,18 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
         try {
             return userServicio.getPlaylistIDFromUser(spotifyApi);
         }catch (Exception e){
-            slackErrorConfig.sendErrorMessage(e);
             throw new RuntimeException(e.getMessage());
         }
     }
 
     @GetMapping("/getSongFromSpotify")
     @ResponseStatus(HttpStatus.OK)
-    public void getSongsfromSpotify (@RequestParam("id") String playlistID){
+    public ResponseEntity<?> getSongsfromSpotify (@RequestParam("id") String playlistID){
         try {
             userServicio.savePlaylistToUser(userServicio.getSpotifyPlaylist(spotifyApi, playlistID), spotifyApi);
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", true , "body" , "Se guardaron las canciones en el usuario"));
         }catch (Exception e){
-
-            throw new RuntimeException(e.getMessage());
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , "Hubo un error en el guardado de canciones"));
         }
     }
 
@@ -100,7 +100,6 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
         try {
             return userServicio.getUserPlayListFromDB(id, pageable);
         }catch (Exception e){
-            slackErrorConfig.sendErrorMessage(e);
             throw new RuntimeException(e.getMessage());
         }
     }
