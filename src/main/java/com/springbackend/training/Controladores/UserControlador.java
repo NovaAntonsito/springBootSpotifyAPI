@@ -55,7 +55,7 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     public RedirectView spotifyLogin() {
         AuthorizationCodeUriRequest authCodeURIRequest = spotifyApi
                 .authorizationCodeUri()
-                .scope("user-read-private, user-read-email")
+                .scope("user-read-private, user-read-email, streaming, user-read-playback-state, user-modify-playback-state")
                 .show_dialog(true)
                 .build();
         final URI uri = authCodeURIRequest.execute();
@@ -96,11 +96,20 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     }
 
     @GetMapping("/songs")
-    public Page<SongsDB> getPlaylistDB (@RequestParam("id") Long id, @PageableDefault Pageable pageable){
+    public ResponseEntity<?> getPlaylistDB (@RequestParam("id") Long id, @PageableDefault Pageable pageable){
         try {
-            return userServicio.getUserPlayListFromDB(id, pageable);
+            return ResponseEntity.status(HttpStatus.OK).body(userServicio.getUserPlayListFromDB(id, pageable));
         }catch (Exception e){
-            throw new RuntimeException(e.getMessage());
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , e.getMessage()));
+        }
+    }
+
+    @GetMapping("/development")
+    public ResponseEntity<?> getAccessToken(){
+        try {
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success" , true, "body", spotifyApi.getAccessToken()));
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , e.getMessage()));
         }
     }
 
