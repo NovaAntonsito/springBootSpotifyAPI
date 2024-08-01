@@ -121,8 +121,7 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
                 .build()
                 .execute();
         if (trackPlaying != null){
-            Track track = (Track) trackPlaying.getItem();
-            return track;
+            return (Track) trackPlaying.getItem();
         }else {
             throw new SpotifyWebApiException();
         }
