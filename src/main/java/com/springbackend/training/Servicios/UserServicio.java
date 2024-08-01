@@ -1,6 +1,7 @@
 package com.springbackend.training.Servicios;
 
-import com.springbackend.training.Controladores.Response.TrackResponse;
+
+import com.fasterxml.jackson.core.JsonParser;
 import com.springbackend.training.Entidades.SongsDB;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Repositorios.Base.RepositorioBase;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.SpotifyHttpManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
+
+import se.michaelthelin.spotify.model_objects.miscellaneous.CurrentlyPlaying;
 import se.michaelthelin.spotify.model_objects.specification.*;
 
 
@@ -58,20 +61,26 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
                 .build();
     }
 
-    @Override
-    public List<Map<String, String>> getPlaylistIDFromUser(SpotifyApi spotifyApi) throws IOException, ParseException, SpotifyWebApiException {
-        Paging<PlaylistSimplified> playlist = spotifyApi.getListOfCurrentUsersPlaylists().build().execute();
-        return Arrays.stream(playlist.getItems()).map(
-                playlistSimplified -> {
-                    Map<String, String> playListMap = new HashMap<>();
-                    playListMap.put("nombre", playlistSimplified.getId());
-                    playListMap.put("id", playlistSimplified.getName());
-                    return playListMap;
-                }).toList();
+    private SpotifyApi spotifyUser (String accessToken) throws ParseException, SpotifyWebApiException {
+        return new SpotifyApi.Builder().setAccessToken(accessToken).build();
     }
 
     @Override
-    public void savePlaylistToUser(List<PlaylistTrack> playlistFromUser, SpotifyApi spotifyApi) throws IOException, ParseException, SpotifyWebApiException {
+    public List<Map<String, String>> getPlaylistIDFromUser(String AccessToken) throws IOException, ParseException, SpotifyWebApiException {
+        SpotifyApi spotifyApi = spotifyUser(AccessToken);
+        Paging<PlaylistSimplified> playlist = spotifyApi.getListOfCurrentUsersPlaylists().build().execute();
+            return Arrays.stream(playlist.getItems()).map(
+                    playlistSimplified -> {
+                        Map<String, String> playListMap = new HashMap<>();
+                        playListMap.put("nombre", playlistSimplified.getName());
+                        playListMap.put("id", playlistSimplified.getId());
+                        return playListMap;
+                    }).toList();
+    }
+
+    @Override
+    public void savePlaylistToUser(List<PlaylistTrack> playlistFromUser, String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+        SpotifyApi spotifyApi = spotifyUser(accessToken);
         User userSpotify = spotifyApi.getCurrentUsersProfile().build().execute();
         UserDB newUserDB = new UserDB();
         newUserDB.setUsuarioSpotify(userSpotify.getDisplayName());
@@ -94,7 +103,8 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     }
 
     @Override
-    public List<PlaylistTrack> getSpotifyPlaylist(SpotifyApi spotifyApi, String playlistID) throws IOException, ParseException, SpotifyWebApiException {
+    public List<PlaylistTrack> getSpotifyPlaylist(String accessToken, String playlistID) throws IOException, ParseException, SpotifyWebApiException {
+        SpotifyApi spotifyApi = spotifyUser(accessToken);
         Playlist playlist = spotifyApi.getPlaylist(playlistID).build().execute();
         return Arrays.stream(playlist.getTracks().getItems()).collect(Collectors.toList());
     }
@@ -102,6 +112,20 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     @Override
     public Page<SongsDB> getUserPlayListFromDB(Long id, Pageable pageable) {
         return cancionesRepository.getSongsDBByUsuarioPropietario_ID(id, pageable);
+    }
+
+    @Override
+    public Track getCurrentSongPlaying(String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+        SpotifyApi spotifyApi = spotifyUser(accessToken);
+        CurrentlyPlaying trackPlaying = spotifyApi.getUsersCurrentlyPlayingTrack()
+                .build()
+                .execute();
+        if (trackPlaying != null){
+            Track track = (Track) trackPlaying.getItem();
+            return track;
+        }else {
+            throw new SpotifyWebApiException();
+        }
     }
 
     private Track getTrackFromPlaylistTrack(PlaylistTrack playlistTrack) {

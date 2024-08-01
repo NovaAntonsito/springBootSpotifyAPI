@@ -1,9 +1,12 @@
 package com.springbackend.training.Controladores;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonParser;
 import com.springbackend.training.Config.SlackErrorConfig;
 import com.springbackend.training.Controladores.Base.ControladorBase;
-import com.springbackend.training.Entidades.SongsDB;
+
+import com.springbackend.training.Controladores.Response.TrackResponse;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.UserServicio;
 
@@ -14,21 +17,22 @@ import org.apache.hc.core5.http.ParseException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import org.springframework.data.domain.Page;
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.credentials.AuthorizationCodeCredentials;
+import se.michaelthelin.spotify.model_objects.specification.Track;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeRequest;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,30 +73,28 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
                 .build();
         AuthorizationCodeCredentials credentials = authorizationCodeRequest.execute();
         String accessToken = credentials.getAccessToken();
-        spotifyApi.setAccessToken(accessToken);
-        return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , "El token fue aceptado"));
+        return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , accessToken));
     }
 
 
 
     @GetMapping("/playlists")
-    public List<Map<String, String>> getPlaylistID (){
-        try {
-            return userServicio.getPlaylistIDFromUser(spotifyApi);
-        }catch (Exception e){
-            throw new RuntimeException(e.getMessage());
+    public List<Map<String, String>> getPlaylistID(@RequestParam("accessToken") String accessToken)
+            throws IOException, ParseException, SpotifyWebApiException, MissingServletRequestParameterException {
+        if (accessToken == null || accessToken.isEmpty()) {
+            throw new MissingServletRequestParameterException("accessToken", "String");
         }
+        return userServicio.getPlaylistIDFromUser(accessToken);
     }
 
     @GetMapping("/getSongFromSpotify")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<?> getSongsfromSpotify (@RequestParam("id") String playlistID){
-        try {
-            userServicio.savePlaylistToUser(userServicio.getSpotifyPlaylist(spotifyApi, playlistID), spotifyApi);
-            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", true , "body" , "Se guardaron las canciones en el usuario"));
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , "Hubo un error en el guardado de canciones"));
-        }
+    public ResponseEntity<?> getSongsfromSpotify (@RequestParam("id") String playlistID, @RequestParam("accessToken") String token) throws IOException, ParseException, SpotifyWebApiException, MissingServletRequestParameterException{
+      if(token == null || token.isEmpty()) {
+          throw new MissingServletRequestParameterException("accessToken", "String");
+      }
+        userServicio.savePlaylistToUser(userServicio.getSpotifyPlaylist(token, playlistID), token);
+      return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", true , "body" , "Los items fueron guardado"));
     }
 
     @GetMapping("/songs")
@@ -104,15 +106,20 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
         }
     }
 
-    @GetMapping("/development")
-    public ResponseEntity<?> getAccessToken(){
-        try {
-            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success" , true, "body", spotifyApi.getAccessToken()));
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , e.getMessage()));
+    @GetMapping("/actualPlaying")
+    public ResponseEntity<?> getActualPlaying(@RequestParam("accessToken") String token) throws IOException, ParseException, SpotifyWebApiException, MissingServletRequestParameterException{
+        if(token == null || token.isEmpty()) {
+            throw new MissingServletRequestParameterException("accessToken", "String");
         }
+        Track track = userServicio.getCurrentSongPlaying(token);
+        TrackResponse trackResponse = new TrackResponse(
+                track.getTrackNumber(),
+                track.getName(),
+                track.getPreviewUrl(),
+                Arrays.stream(track.getArtists()).toList().get(0).getName()
+        );
+        return ResponseEntity.status(HttpStatus.OK).body(trackResponse);
     }
-
 
 
 
