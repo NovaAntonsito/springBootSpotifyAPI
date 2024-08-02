@@ -9,8 +9,13 @@ import com.springbackend.training.Repositorios.RepositorioSongs;
 import com.springbackend.training.Repositorios.RepositorioUser;
 import com.springbackend.training.Servicios.Base.ServicioBase;
 import com.springbackend.training.Servicios.Interfaces.IUserService;
+import com.springbackend.training.Servicios.Response.TrackResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.ParseException;
+import org.jmusixmatch.MusixMatch;
+import org.jmusixmatch.MusixMatchException;
+import org.jmusixmatch.entity.lyrics.Lyrics;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,12 +47,16 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
 
     private final Environment env;
 
+    private final MusixMatch musixMatch;
 
-    public UserServicio(RepositorioBase<UserDB, Long> baseRepository, RepositorioUser personaRepository, RepositorioUser repositorioUser, RepositorioSongs cancionesRepository, Environment env) {
+
+
+    public UserServicio(RepositorioBase<UserDB, Long> baseRepository, RepositorioUser personaRepository, RepositorioUser repositorioUser, RepositorioSongs cancionesRepository, Environment env, MusixMatch musixMatch) {
         super(baseRepository);
         this.personaRepository = repositorioUser;
         this.cancionesRepository = cancionesRepository;
         this.env = env;
+        this.musixMatch = musixMatch;
     }
 
     @Override
@@ -60,6 +69,12 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
                 .setRedirectUri(redirectedURL)
                 .build();
     }
+
+    @Bean
+    public MusixMatch getMusixMatch() {
+        return new MusixMatch(env.getProperty("musicxmatch.api.key"));
+    }
+
 
     private SpotifyApi spotifyUser (String accessToken) throws ParseException, SpotifyWebApiException {
         return new SpotifyApi.Builder().setAccessToken(accessToken).build();
@@ -115,13 +130,34 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     }
 
     @Override
-    public Track getCurrentSongPlaying(String accessToken) throws IOException, ParseException, SpotifyWebApiException {
+    public TrackResponse getCurrentSongPlaying(String accessToken) throws IOException, ParseException, SpotifyWebApiException {
         SpotifyApi spotifyApi = spotifyUser(accessToken);
         CurrentlyPlaying trackPlaying = spotifyApi.getUsersCurrentlyPlayingTrack()
                 .build()
                 .execute();
         if (trackPlaying != null){
-            return (Track) trackPlaying.getItem();
+            Track track = (Track) trackPlaying.getItem();
+                try {
+                    org.jmusixmatch.entity.track.Track TrackMusicMatch = musixMatch.getMatchingTrack(track.getName(), Arrays.stream(track.getArtists()).toList().get(0).getName());
+                    Lyrics lyricsAPI = musixMatch.getLyrics(TrackMusicMatch.getTrack().getTrackId());
+                    return new TrackResponse(
+                            track.getTrackNumber(),
+                            track.getName(),
+                            track.getPreviewUrl(),
+                            Arrays.stream(track.getArtists()).toList().get(0).getName(),
+                            lyricsAPI.getLyricsBody().replaceAll("\n", "<br>")
+
+                    );
+                }catch (MusixMatchException e){
+                    return new TrackResponse(
+                            track.getTrackNumber(),
+                            track.getName(),
+                            track.getPreviewUrl(),
+                            Arrays.stream(track.getArtists()).toList().get(0).getName(),
+                            "Ups, no encontramos la letra :)"
+
+                    );
+                }
         }else {
             throw new SpotifyWebApiException();
         }

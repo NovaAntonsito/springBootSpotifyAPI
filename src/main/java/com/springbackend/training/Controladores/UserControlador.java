@@ -6,8 +6,9 @@ import com.google.gson.JsonParser;
 import com.springbackend.training.Config.SlackErrorConfig;
 import com.springbackend.training.Controladores.Base.ControladorBase;
 
-import com.springbackend.training.Controladores.Response.TrackResponse;
+
 import com.springbackend.training.Entidades.UserDB;
+import com.springbackend.training.Servicios.Response.TrackResponse;
 import com.springbackend.training.Servicios.UserServicio;
 
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.ParseException;
 
+import org.jmusixmatch.MusixMatchException;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Pageable;
@@ -72,7 +74,7 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
                 .build();
         AuthorizationCodeCredentials credentials = authorizationCodeRequest.execute();
         String accessToken = credentials.getAccessToken();
-        return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", false , "body" , accessToken));
+        return ResponseEntity.status(HttpStatus.OK).body(Map.of("success", true , "body" , accessToken));
     }
 
 
@@ -106,20 +108,13 @@ public class UserControlador extends ControladorBase<UserDB, UserServicio> {
     }
 
     @GetMapping("/actualPlaying")
-    public ResponseEntity<?> getActualPlaying(@RequestParam("accessToken") String token) throws IOException, ParseException, SpotifyWebApiException, MissingServletRequestParameterException{
+    public ResponseEntity<?> getActualPlaying(@RequestParam("accessToken") String token) throws IOException, ParseException, SpotifyWebApiException, MissingServletRequestParameterException, MusixMatchException {
         if(token == null || token.isEmpty()) {
             throw new MissingServletRequestParameterException("accessToken", "String");
         }
-        Track track = userServicio.getCurrentSongPlaying(token);
-        TrackResponse trackResponse = new TrackResponse(
-                track.getTrackNumber(),
-                track.getName(),
-                track.getPreviewUrl(),
-                Arrays.stream(track.getArtists()).toList().get(0).getName()
-        );
-        return ResponseEntity.status(HttpStatus.OK).body(trackResponse);
+        TrackResponse track = userServicio.getCurrentSongPlaying(token);
+
+        return ResponseEntity.status(HttpStatus.OK).body(track);
     }
-
-
 
 }

@@ -35,6 +35,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+    implementation("com.sachinhandiekar:jMusixMatch:1.1.4")
     //Developement extension
     implementation("com.slack.api:slack-api-client:1.36.1")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")

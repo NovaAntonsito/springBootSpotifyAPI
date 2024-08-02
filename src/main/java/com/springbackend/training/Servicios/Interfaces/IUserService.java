@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.springbackend.training.Entidades.SongsDB;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Servicios.Base.IServicioBase;
+import com.springbackend.training.Servicios.Response.TrackResponse;
 import org.apache.hc.core5.http.ParseException;
+import org.jmusixmatch.MusixMatch;
+import org.jmusixmatch.MusixMatchException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -28,7 +31,7 @@ public interface IUserService extends IServicioBase<UserDB, Long> {
 
      Page<SongsDB> getUserPlayListFromDB(Long id, Pageable pageable);
 
-     Track getCurrentSongPlaying (String accessToken) throws IOException, ParseException, SpotifyWebApiException;
+     TrackResponse getCurrentSongPlaying (String accessToken) throws IOException, ParseException, SpotifyWebApiException;
 
 
 }

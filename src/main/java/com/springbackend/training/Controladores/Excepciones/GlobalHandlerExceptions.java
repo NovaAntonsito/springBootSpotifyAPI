@@ -3,12 +3,12 @@ package com.springbackend.training.Controladores.Excepciones;
 
 import com.springbackend.training.Controladores.Excepciones.Class.ErrorResponse;
 import org.jetbrains.annotations.NotNull;
+import org.jmusixmatch.MusixMatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.exceptions.detailed.UnauthorizedException;
 
 @ControllerAdvice
@@ -50,7 +50,9 @@ public class GlobalHandlerExceptions {
             );
             return new ResponseEntity<>(er, HttpStatus.UNAUTHORIZED);
         }
+        System.out.println(e.getMessage());
         return new ResponseEntity<>(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error unknown", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 
 }
