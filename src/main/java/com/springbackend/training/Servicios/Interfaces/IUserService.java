@@ -33,5 +33,6 @@ public interface IUserService extends IServicioBase<UserDB, Long> {
 
      TrackResponse getCurrentSongPlaying (String accessToken) throws IOException, ParseException, SpotifyWebApiException;
 
+     void crearUsuarioLocal (UserDB userDB);
 
 }

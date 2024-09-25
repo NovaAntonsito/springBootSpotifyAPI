@@ -1,7 +1,5 @@
 package com.springbackend.training.Servicios;
 
-
-import com.fasterxml.jackson.core.JsonParser;
 import com.springbackend.training.Entidades.SongsDB;
 import com.springbackend.training.Entidades.UserDB;
 import com.springbackend.training.Repositorios.Base.RepositorioBase;
@@ -19,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.SpotifyHttpManager;
@@ -49,14 +48,17 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
 
     private final MusixMatch musixMatch;
 
+    private final PasswordEncoder passwordEncoder;
 
 
-    public UserServicio(RepositorioBase<UserDB, Long> baseRepository, RepositorioUser personaRepository, RepositorioUser repositorioUser, RepositorioSongs cancionesRepository, Environment env, MusixMatch musixMatch) {
+
+    public UserServicio(RepositorioBase<UserDB, Long> baseRepository, RepositorioUser personaRepository, RepositorioUser repositorioUser, RepositorioSongs cancionesRepository, Environment env, MusixMatch musixMatch, PasswordEncoder passwordEncoder) {
         super(baseRepository);
         this.personaRepository = repositorioUser;
         this.cancionesRepository = cancionesRepository;
         this.env = env;
         this.musixMatch = musixMatch;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -93,6 +95,14 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
                     }).toList();
     }
 
+    @Override
+    public void crearUsuarioLocal(UserDB userDB) {
+        userDB.setPassword(passwordEncoder.encode(userDB.getPassword()));
+        personaRepository.save(userDB);
+    }
+
+    //TODO: Primero el usuario tiene que crear una cuenta en mi backend despues se le pregunta si quiere
+    // iniciar sesion en spotify y otorge permisos para acceder a su cuenta de spotify (Averiguar como jaja)
     @Override
     public void savePlaylistToUser(List<PlaylistTrack> playlistFromUser, String accessToken) throws IOException, ParseException, SpotifyWebApiException {
         SpotifyApi spotifyApi = spotifyUser(accessToken);

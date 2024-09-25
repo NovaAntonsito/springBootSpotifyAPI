@@ -44,6 +44,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("mysql:mysql-connector-java:5.1.6")
     testImplementation("org.springframework.restdocs:spring-restdocs-mockmvc")
+    implementation("org.springframework.security:spring-security-core:6.3.3")
+    implementation("org.springframework.security:spring-security-web:6.3.3")
+
 
 
 }

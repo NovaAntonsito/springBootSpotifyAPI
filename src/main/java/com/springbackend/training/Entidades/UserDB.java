@@ -15,8 +15,13 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Setter
-@Table(name = "persona")
+@Table(name = "usuarios")
 public class UserDB extends BaseEntity {
+
+    private String usuarioNombre;
+
+    private String password;
+
     private String usuarioSpotify;
 
     @OneToMany(mappedBy = "usuarioPropietario")
