@@ -48,6 +48,7 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
 
     private final MusixMatch musixMatch;
 
+
     private final PasswordEncoder passwordEncoder;
 
 
@@ -78,7 +79,7 @@ public class UserServicio extends ServicioBase<UserDB, Long> implements IUserSer
     }
 
 
-    private SpotifyApi spotifyUser (String accessToken) throws ParseException, SpotifyWebApiException {
+    private SpotifyApi spotifyUser (String accessToken) {
         return new SpotifyApi.Builder().setAccessToken(accessToken).build();
     }
 

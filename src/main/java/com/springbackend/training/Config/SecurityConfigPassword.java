@@ -20,7 +20,6 @@ public class SecurityConfigPassword {
     }
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Define the strength and the secret for BCrypt
         return new BCryptPasswordEncoder(10, new SecureRandom(Objects.requireNonNull(env.getProperty("super.ultra.special.key.for.jajas")).getBytes()));
     }
 

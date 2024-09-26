@@ -1,7 +1,7 @@
 package com.springbackend.training.Controladores;
 
 
-import com.springbackend.training.Config.SlackErrorConfig;
+
 import com.springbackend.training.Controladores.Base.ControladorBase;
 
 
@@ -42,9 +42,15 @@ import java.util.Map;
 public class SongsControlador extends ControladorBase<UserDB, UserServicio> {
 
     private final UserServicio userServicio;
+
     private static SpotifyApi spotifyApi;
 
-    private final SlackErrorConfig slackErrorConfig;
+
+
+    @Autowired
+    public void setSpotifyApi(UserServicio userServicio) {
+        SongsControlador.spotifyApi = userServicio.getProfile();
+    }
 
 
     @GetMapping("login")
